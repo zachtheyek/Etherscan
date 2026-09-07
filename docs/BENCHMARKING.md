@@ -1,13 +1,14 @@
 # Benchmarking
 
 Aetherscan carries always-on stage timing plus a set of offline tools to read it. This
-document covers the six pieces: the `stage_timer` instrumentation
+document covers the seven pieces: the `stage_timer` instrumentation
 ([`src/aetherscan/benchmark.py`](../src/aetherscan/benchmark.py)), the `pipeline_stages` DB
 table it writes to, the annotated resource plot the monitor renders, the report tool
 ([`utils/benchmark_report.py`](../utils/benchmark_report.py)), the per-band inference plot
-([`utils/perband_report.py`](../utils/perband_report.py)), and the standalone benchmarks
-([`benchmarks/`](../benchmarks/)). It closes with the current baseline numbers and how to
-read the annotated resource plot.
+([`utils/perband_report.py`](../utils/perband_report.py)), the cascade location probe
+([`utils/probe_candidate_location.py`](../utils/probe_candidate_location.py)), and the
+standalone benchmarks ([`benchmarks/`](../benchmarks/)). It closes with the current
+baseline numbers and how to read the annotated resource plot.
 
 ## TL;DR
 
@@ -29,6 +30,18 @@ read the annotated resource plot.
   auto-render-and-post-to-Slack treatment at the tail of every streaming-CSV `inference` run,
   under the same opt-out, and skips (never crashes) on the legacy `--test-files` path or when
   the catalog → cadence join guard trips.
+- `python utils/probe_candidate_location.py --h5-files <6 files> --frequency-mhz <MHz>` traces
+  one or more locations in a cadence (six ordered `--h5-files`, or `--catalog` plus
+  `--target`/`--band` group resolution) through the whole scoring cascade: in-stamp max k² and
+  the energy-detection proposal verdict → production stamp preprocessing → pass-1 screen
+  probability → deterministic RF score → seeded MC mean ± std vs the science threshold, with
+  optional `--csv` and `--plot-dir` waterfalls. It answers what a catalog run deliberately
+  doesn't persist (sub-threshold locations) — benchmark comparisons, and localizing the stage
+  at which a non-recovered candidate drops out. Read-only (no DB rows, manifests, or caches
+  written) and, unlike the two report tools, **not** auto-rendered/posted at the end of a run:
+  an on-demand diagnostic that needs the TF stack (only `--help` is stdlib-only). See
+  [The cascade location probe](#the-cascade-location-probe-utilsprobe_candidate_locationpy)
+  for the documented deltas from a production run.
 - The 1 Hz resource plot overlays the top-level stages as `dimgray` vertical boundary lines
   at each span's right edge on all three (CPU/RAM/GPU) panels — labeled once on the CPU panel
   (angled 30°, left of the line) — via `monitor.annotate_stages`, so a CPU plateau reads as
